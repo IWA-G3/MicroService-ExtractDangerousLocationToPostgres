@@ -44,10 +44,10 @@ class KafkaReceiver {
         LOGGER.info("received dangerous location='{}'", location.toString());
 
         User user = userRepository.getOne(location.getUserid());
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime localDate =  LocalDateTime.parse(location.getLocation_date(),dateTimeFormatter);
 
-        Location postgresLocation = new Location(location.getLatitude(),location.getLongitude(), localDate, new ArrayList<User>((Collection<User>) user) );
+        Location postgresLocation = new Location(location.getLatitude(),location.getLongitude(), localDate, new ArrayList((Collection<User>) user) );
         locationRepository.saveAndFlush(postgresLocation);
         LOGGER.info("dangerous location post to postgres");
     }
