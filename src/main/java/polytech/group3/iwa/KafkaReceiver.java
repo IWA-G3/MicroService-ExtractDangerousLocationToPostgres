@@ -8,17 +8,23 @@ import org.springframework.data.convert.Jsr310Converters;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import polytech.group3.iwa.models.Location;
 import polytech.group3.iwa.kafka_location_model.LocationKafka;
 import polytech.group3.iwa.models.User;
+import polytech.group3.iwa.models.UserLocation;
+import polytech.group3.iwa.models.UserLocationId;
 import polytech.group3.iwa.repositories.LocationRepository;
+import polytech.group3.iwa.repositories.UserLocationRepository;
 import polytech.group3.iwa.repositories.UserRepository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 
 @Component
@@ -33,22 +39,29 @@ class KafkaReceiver {
     @Autowired
     LocationRepository locationRepository;
 
+    @Autowired
+    UserLocationRepository userLocationRepository;
+
     public KafkaReceiver() {
         super();
     }
 
 
     @KafkaListener(topics = "dangerous_location")
-    public void receive(LocationKafka location) {
+    public void receive(@Payload LocationKafka location) {
         System.out.println("localisation dangereuse reçue");
         LOGGER.info("received dangerous location='{}'", location.toString());
 
         User user = userRepository.getOne(location.getUserid());
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        System.out.println(location.getLocation_date());
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
         LocalDateTime localDate =  LocalDateTime.parse(location.getLocation_date(),dateTimeFormatter);
+        List userList = new ArrayList<User>();
+        userList.add(user);
+        Location postgresLocation = new Location(location.getLatitude(),location.getLongitude(), localDate, userList);
+        postgresLocation = locationRepository.saveAndFlush(postgresLocation);
 
-        Location postgresLocation = new Location(location.getLatitude(),location.getLongitude(), localDate, new ArrayList((Collection<User>) user) );
-        locationRepository.saveAndFlush(postgresLocation);
+        userLocationRepository.saveAndFlush(new UserLocation(new UserLocationId(user.getId_keycloak(), postgresLocation.getId_location())));
         LOGGER.info("dangerous location post to postgres");
     }
 }
